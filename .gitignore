@@ -7,6 +7,10 @@ node_modules/
 
 # Build
 dist/
+target/
+**/target/
+**/build/
+**/.gradle/
 
 # Testes e cobertura
 coverage/
