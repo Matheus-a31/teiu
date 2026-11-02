@@ -1,0 +1,34 @@
+# Documentação e assets locais
+project/
+/project/
+
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Testes e cobertura
+coverage/
+
+# Variáveis de ambiente
+.env
+*.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistema operacional e IDEs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
