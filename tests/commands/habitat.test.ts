@@ -29,6 +29,30 @@ describe('Command: habitat', () => {
     logSpy.mockRestore();
   });
 
+  it('should support JSON output for nest-npm', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const habitat = createHabitatCommand();
+
+    await habitat.parseAsync([
+      'node',
+      'habitat',
+      '--json',
+      '--dir',
+      path.join(fixturesDir, 'nest-npm'),
+    ]);
+
+    expect(logSpy).toHaveBeenCalled();
+    const output = logSpy.mock.calls[0]?.[0];
+    const parsed = JSON.parse(output as string);
+
+    expect(parsed.stack).toBe('nest');
+    expect(parsed.nest.packageManager).toBe('npm');
+    expect(parsed.nest.nodeVersion).toBe('20');
+    expect(parsed.port).toBe(3000);
+
+    logSpy.mockRestore();
+  });
+
   it('should print human-readable habitat output without errors', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const habitat = createHabitatCommand();

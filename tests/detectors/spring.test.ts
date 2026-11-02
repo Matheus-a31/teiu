@@ -58,4 +58,3 @@ describe('Detector: Spring Boot', () => {
     expect(result.details).toBeUndefined();
   });
 });
-

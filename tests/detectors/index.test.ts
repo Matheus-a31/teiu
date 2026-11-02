@@ -19,9 +19,22 @@ describe('Detector: Orchestrator (detectProject)', () => {
     expect(info?.existing.dockerfile).toBe(false);
   });
 
+  it('should assemble full ProjectInfo for NestJS', () => {
+    const info = detectProject(path.join(fixturesDir, 'nest-npm'));
+
+    expect(info).not.toBeNull();
+    expect(info?.stack).toBe('nest');
+    expect(info?.port).toBe(3000);
+    expect(info?.healthPath).toBe('/health');
+    expect(info?.hasTests).toBe(true);
+    expect(info?.nest?.packageManager).toBe('npm');
+    expect(info?.nest?.nodeVersion).toBe('20');
+    expect(info?.nest?.entryFile).toBe('dist/main.js');
+    expect(info?.existing.dockerfile).toBe(false);
+  });
+
   it('should return null for directory with no supported stack', () => {
     const info = detectProject(fixturesDir);
     expect(info).toBeNull();
   });
 });
-
