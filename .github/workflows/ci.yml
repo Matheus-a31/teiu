@@ -7,8 +7,8 @@ on:
     branches: [main, develop]
 
 env:
-  SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'Matheus-a31_teiu' }}
-  SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || 'matheus-a31' }}
+  SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'M' }}
+  SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || 'm' }}
   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
 jobs:
