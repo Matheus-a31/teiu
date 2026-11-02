@@ -1,6 +1,18 @@
 import chalk from 'chalk';
 import type { ProjectInfo } from '../types/project.js';
 
+export interface DoctorCheck {
+  name: string;
+  status: 'ok' | 'warn' | 'error';
+  message: string;
+  details?: string;
+}
+
+export interface DoctorResult {
+  allOk: boolean;
+  checks: DoctorCheck[];
+}
+
 export const colors = {
   primary: chalk.hex('#14b8a6'), // Verde-água / Teal (identidade Teiú)
   accent: chalk.hex('#e05638'), // Terracota
@@ -51,6 +63,7 @@ export const logger = {
       rows.push(['Stack', 'NestJS']);
       rows.push(['Node', info.nest.nodeVersion]);
       rows.push(['Package Manager', info.nest.packageManager]);
+      rows.push(['Entry File', info.nest.entryFile]);
     }
 
     if (info.hasTests) {
@@ -67,7 +80,7 @@ export const logger = {
     rows.push(['Health', `${info.healthPath} ${chalk.green('✓')}`]);
 
     // Imprime tabela alinhada
-    const maxKeyLen = Math.max(...rows.map(([k]) => k.length), 10);
+    const maxKeyLen = Math.max(...rows.map(([k]) => k.length), 15);
     for (const [key, val] of rows) {
       console.log(`  ${chalk.dim(key.padEnd(maxKeyLen + 2))} ${chalk.bold(val)}`);
     }
@@ -83,6 +96,45 @@ export const logger = {
     console.log(`    ${'Dockerfile'.padEnd(20)} ${dockerStatus}`);
     console.log(`    ${'docker-compose'.padEnd(20)} ${composeStatus}`);
     console.log(`    ${'Pipeline CI'.padEnd(20)} ${ciStatus}`);
+    console.log();
+  },
+
+  doctor(result: DoctorResult): void {
+    console.log();
+    console.log(`${chalk.bold(colors.primary('🦎 Teiú Doctor — Diagnóstico do Ambiente:'))}`);
+    console.log();
+
+    const maxNameLen = Math.max(...result.checks.map((c) => c.name.length), 16);
+
+    for (const check of result.checks) {
+      let icon = chalk.green('✔');
+      if (check.status === 'warn') icon = chalk.yellow('⚠');
+      if (check.status === 'error') icon = chalk.red('✗');
+
+      const nameStr = chalk.dim(check.name.padEnd(maxNameLen + 2));
+      const messageStr =
+        check.status === 'error'
+          ? chalk.red(check.message)
+          : check.status === 'warn'
+            ? chalk.yellow(check.message)
+            : chalk.bold(check.message);
+
+      console.log(`  ${nameStr} ${messageStr.padEnd(32)} ${icon}`);
+      if (check.details) {
+        console.log(`  ${''.padEnd(maxNameLen + 2)} ${chalk.dim(check.details)}`);
+      }
+    }
+
+    console.log();
+    if (result.allOk) {
+      console.log(
+        `  ${chalk.green('✔')} ${colors.primary('Ambiente pronto e 100% compatível com o Teiú! 🦎')}`,
+      );
+    } else {
+      console.log(
+        `  ${chalk.yellow('⚠')} ${chalk.yellow('Algumas ferramentas precisam de atenção para funcionamento completo.')}`,
+      );
+    }
     console.log();
   },
 };

@@ -34,4 +34,3 @@ export function createHabitatCommand(): Command {
 
   return habitat;
 }
-
