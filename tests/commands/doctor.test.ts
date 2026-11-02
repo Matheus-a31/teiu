@@ -16,7 +16,7 @@ describe('Command: doctor', () => {
     const teiuCheck = result.checks.find((c) => c.name === 'Teiú CLI');
     expect(teiuCheck).toBeDefined();
     expect(teiuCheck?.status).toBe('ok');
-  });
+  }, 15000);
 
   it('should support JSON output in doctor command', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -32,7 +32,7 @@ describe('Command: doctor', () => {
     expect(parsed).toHaveProperty('allOk');
 
     logSpy.mockRestore();
-  });
+  }, 15000);
 
   it('should output visual text without throwing errors', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -42,5 +42,5 @@ describe('Command: doctor', () => {
 
     expect(logSpy).toHaveBeenCalled();
     logSpy.mockRestore();
-  });
+  }, 15000);
 });

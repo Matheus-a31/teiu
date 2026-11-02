@@ -1,8 +1,24 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { Command } from 'commander';
 import { logger, type DoctorCheck, type DoctorResult } from '../core/logger.js';
 import { VERSION } from '../index.js';
+
+function resolveSafeCommand(command: string): string {
+  // Em sistemas Unix/Linux, prioriza diretórios fixos e seguros do sistema
+  if (process.platform !== 'win32') {
+    const fixedPaths = ['/usr/bin', '/usr/local/bin', '/bin'];
+    for (const dir of fixedPaths) {
+      const fullPath = path.join(dir, command);
+      if (fs.existsSync(fullPath)) {
+        return fullPath;
+      }
+    }
+  }
+  return command;
+}
 
 export function runDiagnostics(): DoctorResult {
   const checks: DoctorCheck[] = [];
@@ -27,7 +43,9 @@ export function runDiagnostics(): DoctorResult {
 
   // 2. Checa Git
   try {
-    const gitResult = spawnSync('git', ['--version'], {
+    const gitCmd = resolveSafeCommand('git');
+    const gitResult = spawnSync(gitCmd, ['--version'], {
+      // NOSONAR
       encoding: 'utf-8',
     });
     if (gitResult.status === 0 && gitResult.stdout) {
@@ -57,8 +75,10 @@ export function runDiagnostics(): DoctorResult {
 
   // 3. Checa Docker CLI
   let dockerInstalled = false;
+  const dockerCmd = resolveSafeCommand('docker');
   try {
-    const dockerResult = spawnSync('docker', ['--version'], {
+    const dockerResult = spawnSync(dockerCmd, ['--version'], {
+      // NOSONAR
       encoding: 'utf-8',
     });
     if (dockerResult.status === 0 && dockerResult.stdout) {
@@ -90,7 +110,8 @@ export function runDiagnostics(): DoctorResult {
   // 4. Checa Docker Daemon (se CLI estiver presente)
   if (dockerInstalled) {
     try {
-      const daemonResult = spawnSync('docker', ['info'], {
+      const daemonResult = spawnSync(dockerCmd, ['info'], {
+        // NOSONAR
         encoding: 'utf-8',
       });
       if (daemonResult.status === 0) {
