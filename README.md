@@ -1,13 +1,21 @@
-# Teiú
+<div align = center>
+<h1>Teiú</h1>
+</div>
+<div align = center>
 <img width="104" height="111" alt="Captura de tela_2-11-2026_154715 com" src="https://github.com/user-attachments/assets/d458e562-4d4f-4555-b1cd-c7bd9193948c" />
-
+</div>
+<div align=center>
 
 > **"Infra pronta, do jeito certo."**  
 > _Toolkit de Entrega, Infraestrutura e Unificação_
+</div>
 
+<div align=center>
+  
 [![CI](https://github.com/Matheus-a31/teiu/actions/workflows/ci.yml/badge.svg)](https://github.com/Matheus-a31/teiu/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Node: >=18](https://img.shields.io/badge/node-%3E%3D18-blue.svg)](https://nodejs.org/)
+</div>
 
 CLI que **detecta** sua stack (Spring Boot / NestJS), **gera** Dockerfile multi-stage otimizado + docker-compose + pipeline CI/CD, e **audita** o que já existe — tudo em segundos, direto no seu terminal.
 
