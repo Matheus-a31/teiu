@@ -1,0 +1,7 @@
+dist/
+coverage/
+src/templates/
+dist/templates/
+tests/generators/__snapshots__/
+package-lock.json
+
