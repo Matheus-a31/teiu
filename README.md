@@ -1,4 +1,6 @@
 # Teiú
+<img width="104" height="111" alt="Captura de tela_2-11-2026_154715 com" src="https://github.com/user-attachments/assets/d458e562-4d4f-4555-b1cd-c7bd9193948c" />
+
 
 > **"Infra pronta, do jeito certo."**  
 > _Toolkit de Entrega, Infraestrutura e Unificação_
