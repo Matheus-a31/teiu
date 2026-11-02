@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Generator: Spring Dockerfile & .dockerignore > should generate multi-stage Dockerfile for Spring Gradle 1`] = `
+exports[`Generator: Spring Dockerfile & .dockerignore > should generate multi-stage Dockerfile for 'spring-gradle' 1`] = `
 "# ==============================================================================
 # 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: Spring Boot | Multi-stage build | Non-root security | Otimizado para cache
@@ -49,7 +49,7 @@ ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-j
 "
 `;
 
-exports[`Generator: Spring Dockerfile & .dockerignore > should generate multi-stage Dockerfile for Spring Kotlin 1`] = `
+exports[`Generator: Spring Dockerfile & .dockerignore > should generate multi-stage Dockerfile for 'spring-kotlin' 1`] = `
 "# ==============================================================================
 # 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: Spring Boot | Multi-stage build | Non-root security | Otimizado para cache
@@ -98,7 +98,7 @@ ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-j
 "
 `;
 
-exports[`Generator: Spring Dockerfile & .dockerignore > should generate multi-stage Dockerfile for Spring Maven 1`] = `
+exports[`Generator: Spring Dockerfile & .dockerignore > should generate multi-stage Dockerfile for 'spring-maven' 1`] = `
 "# ==============================================================================
 # 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: Spring Boot | Multi-stage build | Non-root security | Otimizado para cache

@@ -12,7 +12,8 @@ Handlebars.registerHelper('ne', (a, b) => a !== b);
 Handlebars.registerHelper('json', (val) => JSON.stringify(val, null, 2));
 
 export function renderTemplate(templateSource: string, context: Record<string, unknown>): string {
-  const compiled = Handlebars.compile(templateSource, { noEscape: true });
+  // NOSONAR: O Teiú gera artefatos de infraestrutura (Dockerfile, YAML, scripts) e não HTML web.
+  const compiled = Handlebars.compile(templateSource, { noEscape: true }); // NOSONAR
   return compiled(context);
 }
 

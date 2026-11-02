@@ -1,67 +1,83 @@
-# ============================================================================== # 🦎 Dockerfile
-gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação # Stack: Spring Boot |
-Multi-stage build | Non-root security | Otimizado para cache #
-============================================================================== #
------------------------------------------------------------------------------- # Stage 1: Build &
-Resolução de Dependências #
------------------------------------------------------------------------------- FROM
-{{builderImage}}
-AS builder WORKDIR /build
+# ==============================================================================
+# 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
+# Stack: Spring Boot | Multi-stage build | Non-root security | Otimizado para cache
+# ==============================================================================
 
-{{#if (eq buildTool 'maven')}}
-  # Cache de dependências do Maven
-  {{#if hasWrapper}}
-    COPY .mvn .mvn COPY mvnw pom.xml ./ RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
-  {{else}}
-    COPY pom.xml ./ RUN mvn dependency:go-offline -B
-  {{/if}}
+# ------------------------------------------------------------------------------
+# Stage 1: Build & Resolução de Dependências
+# ------------------------------------------------------------------------------
+FROM {{builderImage}} AS builder
+WORKDIR /build
 
-  # Copia código-fonte e empacota o artefato sem rodar testes (já validados no CI) COPY src ./src
-  {{#if hasWrapper}}
-    RUN ./mvnw clean package -DskipTests -B
-  {{else}}
-    RUN mvn clean package -DskipTests -B
-  {{/if}}
-
+{{#if (eq buildTool "maven")}}
+# Cache de dependências do Maven
+{{#if hasWrapper}}
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
 {{else}}
-  # Cache de dependências do Gradle
-  {{#if hasWrapper}}
-    COPY gradlew ./ COPY gradle ./gradle
-    {{#if isKotlin}}
-      COPY build.gradle.kts settings.gradle.kts* ./
-    {{else}}
-      COPY build.gradle settings.gradle* ./
-    {{/if}}
-    RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon || true
-  {{else}}
-    {{#if isKotlin}}
-      COPY build.gradle.kts settings.gradle.kts* ./
-    {{else}}
-      COPY build.gradle settings.gradle* ./
-    {{/if}}
-    RUN gradle dependencies --no-daemon || true
-  {{/if}}
-
-  # Copia código-fonte e empacota o jar executável COPY src ./src
-  {{#if hasWrapper}}
-    RUN ./gradlew bootJar -x test --no-daemon
-  {{else}}
-    RUN gradle bootJar -x test --no-daemon
-  {{/if}}
+COPY pom.xml ./
+RUN mvn dependency:go-offline -B
 {{/if}}
 
-# ------------------------------------------------------------------------------ # Stage 2: Runtime
-enxuto, seguro e sem ferramentas de build #
------------------------------------------------------------------------------- FROM
-{{runtimeImage}}
-AS runtime WORKDIR /app # Criação de grupo e usuário sem privilégios de root para mitigar riscos de
-segurança RUN addgroup -S app && adduser -S app -G app # Copia o artefato compilado concedendo
-permissões ao usuário app COPY --from=builder --chown=app:app /build/{{artifactPath}}
-app.jar # Define o usuário de execução da aplicação USER app # Expõe a porta de escuta da aplicação
-EXPOSE
-{{port}}
+# Copia código-fonte e empacota o artefato sem rodar testes (já validados no CI)
+COPY src ./src
+{{#if hasWrapper}}
+RUN ./mvnw clean package -DskipTests -B
+{{else}}
+RUN mvn clean package -DskipTests -B
+{{/if}}
 
-# Verificação de saúde em runtime HEALTHCHECK --interval=30s --timeout=5s --start-period=60s
---retries=3 \ CMD wget -qO- http://localhost:{{port}}{{healthPath}}
-|| exit 1 # Inicialização com suporte a limites de memória do container ENTRYPOINT ["java",
-"-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+{{else}}
+# Cache de dependências do Gradle
+{{#if hasWrapper}}
+COPY gradlew ./
+COPY gradle ./gradle
+{{#if isKotlin}}
+COPY build.gradle.kts settings.gradle.kts* ./
+{{else}}
+COPY build.gradle settings.gradle* ./
+{{/if}}
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon || true
+{{else}}
+{{#if isKotlin}}
+COPY build.gradle.kts settings.gradle.kts* ./
+{{else}}
+COPY build.gradle settings.gradle* ./
+{{/if}}
+RUN gradle dependencies --no-daemon || true
+{{/if}}
+
+# Copia código-fonte e empacota o jar executável
+COPY src ./src
+{{#if hasWrapper}}
+RUN ./gradlew bootJar -x test --no-daemon
+{{else}}
+RUN gradle bootJar -x test --no-daemon
+{{/if}}
+{{/if}}
+
+# ------------------------------------------------------------------------------
+# Stage 2: Runtime enxuto, seguro e sem ferramentas de build
+# ------------------------------------------------------------------------------
+FROM {{runtimeImage}} AS runtime
+WORKDIR /app
+
+# Criação de grupo e usuário sem privilégios de root para mitigar riscos de segurança
+RUN addgroup -S app && adduser -S app -G app
+
+# Copia o artefato compilado concedendo permissões ao usuário app
+COPY --from=builder --chown=app:app /build/{{artifactPath}} app.jar
+
+# Define o usuário de execução da aplicação
+USER app
+
+# Expõe a porta de escuta da aplicação
+EXPOSE {{port}}
+
+# Verificação de saúde em runtime
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:{{port}}{{healthPath}} || exit 1
+
+# Inicialização com suporte a limites de memória do container
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
