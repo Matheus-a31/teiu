@@ -2,6 +2,7 @@ import process from 'node:process';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { createHabitatCommand } from './commands/habitat.js';
+import { createDoctorCommand } from './commands/doctor.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -13,6 +14,7 @@ export function createCli(): Command {
     .helpOption('-h, --help', 'Exibe a ajuda para comandos e opções');
 
   program.addCommand(createHabitatCommand());
+  program.addCommand(createDoctorCommand());
 
   return program;
 }

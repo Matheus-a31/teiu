@@ -18,6 +18,8 @@ coverage/
 # Variáveis de ambiente
 .env
 *.env.local
+!tests/fixtures/**/.env
+!tests/fixtures/**/.env.*
 
 # Logs
 npm-debug.log*

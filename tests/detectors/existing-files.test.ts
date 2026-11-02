@@ -46,4 +46,3 @@ describe('Detector: Existing Files', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 });
-

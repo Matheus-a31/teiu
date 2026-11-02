@@ -3,4 +3,5 @@ export * from './types/index.js';
 export * from './detectors/index.js';
 export * from './core/logger.js';
 export { createHabitatCommand } from './commands/habitat.js';
+export { createDoctorCommand, runDiagnostics } from './commands/doctor.js';
 export { createCli, program, runCli } from './cli.js';
