@@ -47,6 +47,7 @@ export function runDiagnostics(): DoctorResult {
     const gitResult = spawnSync(gitCmd, ['--version'], {
       // NOSONAR
       encoding: 'utf-8',
+      timeout: 3000,
     });
     if (gitResult.status === 0 && gitResult.stdout) {
       const match = gitResult.stdout.trim().match(/git version ([\d.]+)/);
@@ -80,6 +81,7 @@ export function runDiagnostics(): DoctorResult {
     const dockerResult = spawnSync(dockerCmd, ['--version'], {
       // NOSONAR
       encoding: 'utf-8',
+      timeout: 3000,
     });
     if (dockerResult.status === 0 && dockerResult.stdout) {
       dockerInstalled = true;
@@ -113,6 +115,7 @@ export function runDiagnostics(): DoctorResult {
       const daemonResult = spawnSync(dockerCmd, ['info'], {
         // NOSONAR
         encoding: 'utf-8',
+        timeout: 3000,
       });
       if (daemonResult.status === 0) {
         checks.push({
