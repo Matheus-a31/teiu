@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { createHabitatCommand } from './commands/habitat.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createDockerCommand } from './commands/docker.js';
+import { createComposeCommand } from './commands/compose.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -17,6 +18,7 @@ export function createCli(): Command {
   program.addCommand(createHabitatCommand());
   program.addCommand(createDoctorCommand());
   program.addCommand(createDockerCommand());
+  program.addCommand(createComposeCommand());
 
   return program;
 }
