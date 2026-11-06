@@ -1,10 +1,12 @@
 import process from 'node:process';
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { createInitCommand } from './commands/init.js';
 import { createHabitatCommand } from './commands/habitat.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createDockerCommand } from './commands/docker.js';
 import { createComposeCommand } from './commands/compose.js';
+import { createCiCommand } from './commands/ci.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -15,10 +17,12 @@ export function createCli(): Command {
     .version('0.1.0', '-v, --version', 'Exibe a versão do Teiú')
     .helpOption('-h, --help', 'Exibe a ajuda para comandos e opções');
 
+  program.addCommand(createInitCommand());
   program.addCommand(createHabitatCommand());
   program.addCommand(createDoctorCommand());
   program.addCommand(createDockerCommand());
   program.addCommand(createComposeCommand());
+  program.addCommand(createCiCommand());
 
   return program;
 }
