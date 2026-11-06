@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('ne', (a, b) => a !== b);
 Handlebars.registerHelper('json', (val) => JSON.stringify(val, null, 2));
+Handlebars.registerHelper('gh', (expr?: string) => (expr ? `\${{ ${expr} }}` : '${{'));
 
 export function renderTemplate(templateSource: string, context: Record<string, unknown>): string {
   // NOSONAR: O Teiú gera artefatos de infraestrutura (Dockerfile, YAML, scripts) e não HTML web.
