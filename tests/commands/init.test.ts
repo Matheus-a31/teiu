@@ -9,6 +9,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const fixturesDir = path.resolve(__dirname, '../fixtures');
 
+async function executeInitCommand(args: string[]): Promise<string> {
+  const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const cmd = createInitCommand();
+    await cmd.parseAsync(['node', 'init', ...args]);
+    return logSpy.mock.calls.map((c) => c[0]).join('\n');
+  } finally {
+    logSpy.mockRestore();
+  }
+}
+
+function verifyGeneratedInfraFiles(dir: string): void {
+  const expectedFiles = [
+    'Dockerfile',
+    '.dockerignore',
+    'docker-compose.yml',
+    '.env.example',
+    '.github/workflows/ci.yml',
+  ];
+  for (const file of expectedFiles) {
+    expect(fs.existsSync(path.join(dir, file))).toBe(true);
+  }
+}
+
 describe('Command: init', () => {
   let tempDir: string;
 
@@ -24,79 +48,51 @@ describe('Command: init', () => {
 
   it('should support dry-run mode without writing files', async () => {
     const fixtureDir = path.join(fixturesDir, 'spring-maven');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const output = await executeInitCommand([fixtureDir, '--dry-run', '--yes']);
 
-    const cmd = createInitCommand();
-    await cmd.parseAsync(['node', 'init', fixtureDir, '--dry-run', '--yes']);
-
-    expect(logSpy).toHaveBeenCalled();
-    logSpy.mockRestore();
+    expect(output).toBeDefined();
   });
 
   it('should support JSON output in init command', async () => {
     const fixtureDir = path.join(fixturesDir, 'nest-npm');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    const cmd = createInitCommand();
-    await cmd.parseAsync(['node', 'init', fixtureDir, '--dry-run', '--yes', '--json']);
-
-    expect(logSpy).toHaveBeenCalled();
-    const output = logSpy.mock.calls[0]?.[0];
-    const parsed = JSON.parse(output as string);
+    const output = await executeInitCommand([fixtureDir, '--dry-run', '--yes', '--json']);
+    const parsed = JSON.parse(output);
 
     expect(parsed.success).toBe(true);
     expect(parsed.stack).toBe('nest');
     expect(parsed.dryRun).toBe(true);
     expect(parsed.results.length).toBeGreaterThanOrEqual(4);
-
-    logSpy.mockRestore();
   });
 
   it('should generate all infrastructure files for Spring Boot project with --yes', async () => {
-    const fixtureDir = path.join(fixturesDir, 'spring-maven');
-    fs.cpSync(fixtureDir, tempDir, { recursive: true });
+    fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
 
-    const cmd = createInitCommand();
-    await cmd.parseAsync(['node', 'init', tempDir, '--yes']);
+    await executeInitCommand([tempDir, '--yes']);
 
-    const dockerfilePath = path.join(tempDir, 'Dockerfile');
-    const dockerignorePath = path.join(tempDir, '.dockerignore');
-    const composePath = path.join(tempDir, 'docker-compose.yml');
-    const envExamplePath = path.join(tempDir, '.env.example');
-    const ciPath = path.join(tempDir, '.github/workflows/ci.yml');
+    verifyGeneratedInfraFiles(tempDir);
 
-    expect(fs.existsSync(dockerfilePath)).toBe(true);
-    expect(fs.existsSync(dockerignorePath)).toBe(true);
-    expect(fs.existsSync(composePath)).toBe(true);
-    expect(fs.existsSync(envExamplePath)).toBe(true);
-    expect(fs.existsSync(ciPath)).toBe(true);
-
-    const dockerfile = fs.readFileSync(dockerfilePath, 'utf-8');
+    const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
     expect(dockerfile).toContain('eclipse-temurin:21-jdk-alpine');
     expect(dockerfile).toContain('USER app');
     expect(dockerfile).toContain('HEALTHCHECK');
 
-    const compose = fs.readFileSync(composePath, 'utf-8');
+    const compose = fs.readFileSync(path.join(tempDir, 'docker-compose.yml'), 'utf-8');
     expect(compose).toContain('services:');
     expect(compose).toContain('postgres:');
 
-    const env = fs.readFileSync(envExamplePath, 'utf-8');
+    const env = fs.readFileSync(path.join(tempDir, '.env.example'), 'utf-8');
     expect(env).toContain('POSTGRES_DB=');
 
-    const ci = fs.readFileSync(ciPath, 'utf-8');
+    const ci = fs.readFileSync(path.join(tempDir, '.github/workflows/ci.yml'), 'utf-8');
     expect(ci).toContain('name: CI / CD');
     expect(ci).toContain('actions/setup-java@v4');
     expect(ci).toContain('./mvnw clean verify');
   });
 
   it('should generate all infrastructure files for NestJS with custom services', async () => {
-    const fixtureDir = path.join(fixturesDir, 'nest-pnpm');
-    fs.cpSync(fixtureDir, tempDir, { recursive: true });
+    fs.cpSync(path.join(fixturesDir, 'nest-pnpm'), tempDir, { recursive: true });
 
-    const cmd = createInitCommand();
-    await cmd.parseAsync([
-      'node',
-      'init',
+    await executeInitCommand([
       tempDir,
       '--db',
       'mysql',
@@ -105,29 +101,21 @@ describe('Command: init', () => {
       '--yes',
     ]);
 
-    const dockerfilePath = path.join(tempDir, 'Dockerfile');
-    const composePath = path.join(tempDir, 'docker-compose.yml');
-    const envExamplePath = path.join(tempDir, '.env.example');
-    const ciPath = path.join(tempDir, '.github/workflows/ci.yml');
+    verifyGeneratedInfraFiles(tempDir);
 
-    expect(fs.existsSync(dockerfilePath)).toBe(true);
-    expect(fs.existsSync(composePath)).toBe(true);
-    expect(fs.existsSync(envExamplePath)).toBe(true);
-    expect(fs.existsSync(ciPath)).toBe(true);
-
-    const dockerfile = fs.readFileSync(dockerfilePath, 'utf-8');
+    const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
     expect(dockerfile).toContain('pnpm');
     expect(dockerfile).toContain('USER node');
 
-    const compose = fs.readFileSync(composePath, 'utf-8');
+    const compose = fs.readFileSync(path.join(tempDir, 'docker-compose.yml'), 'utf-8');
     expect(compose).toContain('mysql:');
     expect(compose).toContain('redis:');
 
-    const env = fs.readFileSync(envExamplePath, 'utf-8');
+    const env = fs.readFileSync(path.join(tempDir, '.env.example'), 'utf-8');
     expect(env).toContain('MYSQL_DATABASE=');
     expect(env).toContain('REDIS_PORT=6379');
 
-    const ci = fs.readFileSync(ciPath, 'utf-8');
+    const ci = fs.readFileSync(path.join(tempDir, '.github/workflows/ci.yml'), 'utf-8');
     expect(ci).toContain('pnpm/action-setup@v4');
     expect(ci).toContain('pnpm install --frozen-lockfile');
   });

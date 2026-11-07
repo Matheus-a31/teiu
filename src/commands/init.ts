@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { Command } from 'commander';
@@ -7,8 +6,7 @@ import { detectProject } from '../detectors/index.js';
 import type { ProjectInfo } from '../types/project.js';
 import { generateSpringDocker } from '../generators/docker/spring.js';
 import { generateNestDocker } from '../generators/docker/nest.js';
-import { generateCompose } from '../generators/compose/base.js';
-import { generateEnvExample } from '../generators/dotfiles.js';
+import { generateComposeAndEnv } from '../generators/compose/base.js';
 import { generateGithubWorkflow } from '../generators/ci/github.js';
 import type { DatabaseType, CacheType } from '../generators/compose/services.js';
 import { writeFileWithPolicy, type WriteFileResult } from '../core/file-writer.js';
@@ -232,16 +230,15 @@ export function createInitCommand(): Command {
 
       // 2. docker-compose.yml & .env.example
       const composePath = path.join(targetDir, 'docker-compose.yml');
-      let existingComposeContent: string | undefined;
-      if (fs.existsSync(composePath) && !options.force) {
-        existingComposeContent = fs.readFileSync(composePath, 'utf-8');
-      }
-
-      const composeOutput = generateCompose(info, {
-        db: selectedDb,
-        cache: selectedCache,
-        existingComposeContent,
-      });
+      const { composeResult: composeOutput, envExampleContent } = generateComposeAndEnv(
+        info,
+        targetDir,
+        {
+          db: selectedDb,
+          cache: selectedCache,
+          force: options.force,
+        },
+      );
 
       results.push(
         writeFileWithPolicy(composePath, composeOutput.content, {
@@ -250,11 +247,6 @@ export function createInitCommand(): Command {
           backup: true,
         }),
       );
-
-      const envExampleContent = generateEnvExample(info, {
-        db: selectedDb,
-        cache: selectedCache,
-      });
 
       results.push(
         writeFileWithPolicy(path.join(targetDir, '.env.example'), envExampleContent, {

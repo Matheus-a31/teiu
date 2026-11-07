@@ -8,68 +8,81 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const fixturesDir = path.resolve(__dirname, '../fixtures');
 
+function generateForFixture(fixtureName: string, registry?: 'ghcr' | 'dockerhub' | 'ecr') {
+  const project = detectProject(path.join(fixturesDir, fixtureName));
+  return generateGithubWorkflow(project, registry ? { registry } : undefined);
+}
+
 describe('Generator: CI Workflow (GitHub Actions)', () => {
-  it('should generate GitHub Actions workflow for Spring Maven with GHCR', () => {
-    const project = detectProject(path.join(fixturesDir, 'spring-maven'));
-    const generated = generateGithubWorkflow(project, { registry: 'ghcr' });
-
+  it.each([
+    {
+      name: 'Spring Maven with GHCR',
+      fixture: 'spring-maven',
+      registry: 'ghcr' as const,
+      assertions: [
+        'name: CI / CD',
+        'actions/setup-java@v4',
+        "distribution: 'temurin'",
+        "java-version: '21'",
+        "cache: 'maven'",
+        './mvnw clean verify',
+        'ghcr.io',
+        'docker/build-push-action@v6',
+        'cache-from: type=gha',
+      ],
+    },
+    {
+      name: 'Spring Gradle with Docker Hub',
+      fixture: 'spring-gradle',
+      registry: 'dockerhub' as const,
+      assertions: [
+        "cache: 'gradle'",
+        './gradlew check',
+        'Log in to Docker Hub',
+        'DOCKER_HUB_USERNAME',
+        'DOCKER_HUB_TOKEN',
+      ],
+    },
+    {
+      name: 'Nest npm with GHCR',
+      fixture: 'nest-npm',
+      registry: 'ghcr' as const,
+      assertions: [
+        'actions/setup-node@v4',
+        "cache: 'npm'",
+        'run: npm ci',
+        'npm run lint --if-present',
+        'npm test --if-present',
+        'ghcr.io',
+      ],
+    },
+    {
+      name: 'Nest pnpm with ECR',
+      fixture: 'nest-pnpm',
+      registry: 'ecr' as const,
+      assertions: [
+        'pnpm/action-setup@v4',
+        "cache: 'pnpm'",
+        'pnpm install --frozen-lockfile',
+        'Log in to Amazon ECR',
+        'amazon-ecr-login@v2',
+      ],
+    },
+    {
+      name: 'Nest yarn',
+      fixture: 'nest-yarn',
+      registry: undefined,
+      assertions: [
+        "cache: 'yarn'",
+        'yarn install --frozen-lockfile',
+      ],
+    },
+  ])('should generate GitHub Actions workflow for $name', ({ fixture, registry, assertions }) => {
+    const generated = generateForFixture(fixture, registry);
     expect(generated.targetPath).toBe('.github/workflows/ci.yml');
-    expect(generated.content).toContain('name: CI / CD');
-    expect(generated.content).toContain('actions/setup-java@v4');
-    expect(generated.content).toContain('distribution: \'temurin\'');
-    expect(generated.content).toContain('java-version: \'21\'');
-    expect(generated.content).toContain('cache: \'maven\'');
-    expect(generated.content).toContain('./mvnw clean verify');
-    expect(generated.content).toContain('ghcr.io');
-    expect(generated.content).toContain('docker/build-push-action@v6');
-    expect(generated.content).toContain('cache-from: type=gha');
-    expect(generated.content).toMatchSnapshot();
-  });
-
-  it('should generate GitHub Actions workflow for Spring Gradle with Docker Hub', () => {
-    const project = detectProject(path.join(fixturesDir, 'spring-gradle'));
-    const generated = generateGithubWorkflow(project, { registry: 'dockerhub' });
-
-    expect(generated.content).toContain('cache: \'gradle\'');
-    expect(generated.content).toContain('./gradlew check');
-    expect(generated.content).toContain('Log in to Docker Hub');
-    expect(generated.content).toContain('DOCKER_HUB_USERNAME');
-    expect(generated.content).toContain('DOCKER_HUB_TOKEN');
-    expect(generated.content).toMatchSnapshot();
-  });
-
-  it('should generate GitHub Actions workflow for Nest npm with GHCR', () => {
-    const project = detectProject(path.join(fixturesDir, 'nest-npm'));
-    const generated = generateGithubWorkflow(project, { registry: 'ghcr' });
-
-    expect(generated.targetPath).toBe('.github/workflows/ci.yml');
-    expect(generated.content).toContain('actions/setup-node@v4');
-    expect(generated.content).toContain('cache: \'npm\'');
-    expect(generated.content).toContain('run: npm ci');
-    expect(generated.content).toContain('npm run lint --if-present');
-    expect(generated.content).toContain('npm test --if-present');
-    expect(generated.content).toContain('ghcr.io');
-    expect(generated.content).toMatchSnapshot();
-  });
-
-  it('should generate GitHub Actions workflow for Nest pnpm with ECR', () => {
-    const project = detectProject(path.join(fixturesDir, 'nest-pnpm'));
-    const generated = generateGithubWorkflow(project, { registry: 'ecr' });
-
-    expect(generated.content).toContain('pnpm/action-setup@v4');
-    expect(generated.content).toContain('cache: \'pnpm\'');
-    expect(generated.content).toContain('pnpm install --frozen-lockfile');
-    expect(generated.content).toContain('Log in to Amazon ECR');
-    expect(generated.content).toContain('amazon-ecr-login@v2');
-    expect(generated.content).toMatchSnapshot();
-  });
-
-  it('should generate GitHub Actions workflow for Nest yarn', () => {
-    const project = detectProject(path.join(fixturesDir, 'nest-yarn'));
-    const generated = generateGithubWorkflow(project);
-
-    expect(generated.content).toContain('cache: \'yarn\'');
-    expect(generated.content).toContain('yarn install --frozen-lockfile');
+    for (const text of assertions) {
+      expect(generated.content).toContain(text);
+    }
     expect(generated.content).toMatchSnapshot();
   });
 });

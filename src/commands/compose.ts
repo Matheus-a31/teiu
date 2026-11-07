@@ -1,11 +1,9 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { detectProject } from '../detectors/index.js';
-import { generateCompose } from '../generators/compose/base.js';
-import { generateEnvExample } from '../generators/dotfiles.js';
+import { generateComposeAndEnv } from '../generators/compose/base.js';
 import type { DatabaseType, CacheType } from '../generators/compose/services.js';
 import { writeFileWithPolicy, type WriteFileResult } from '../core/file-writer.js';
 import { logger, colors } from '../core/logger.js';
@@ -89,25 +87,15 @@ export function createComposeCommand(): Command {
         }
       }
 
-      // Lê compose existente para Merge Inteligente se presente
+      // Gera compose e .env.example (com merge inteligente se docker-compose.yml existir)
       const composeFilePath = path.join(targetDir, 'docker-compose.yml');
-      let existingComposeContent: string | undefined;
-      if (fs.existsSync(composeFilePath)) {
-        existingComposeContent = fs.readFileSync(composeFilePath, 'utf-8');
-      }
-
-      const composeResult = generateCompose(info, {
-        db: selectedDb,
-        cache: selectedCache,
-        existingComposeContent,
-      });
-
-      const envExampleContent = generateEnvExample(info, {
-        db: selectedDb,
-        cache: selectedCache,
-      });
-
       const envExamplePath = path.join(targetDir, '.env.example');
+
+      const { composeResult, envExampleContent } = generateComposeAndEnv(info, targetDir, {
+        db: selectedDb,
+        cache: selectedCache,
+        force: options.force,
+      });
 
       // Escreve os arquivos
       const composeFileResult = writeFileWithPolicy(composeFilePath, composeResult.content, {

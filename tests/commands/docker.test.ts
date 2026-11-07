@@ -47,43 +47,42 @@ describe('Command: docker', () => {
     logSpy.mockRestore();
   });
 
-  it('should write Dockerfile and .dockerignore for Spring when running with --yes', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'teiu-cmd-docker-spring-'));
-    fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
+  it.each([
+    {
+      stack: 'Spring',
+      fixture: 'spring-maven',
+      expectedBuilder: 'FROM eclipse-temurin:21-jdk-alpine AS builder',
+      expectedUser: 'USER app',
+    },
+    {
+      stack: 'NestJS',
+      fixture: 'nest-npm',
+      expectedBuilder: 'FROM node:20-alpine AS deps',
+      expectedUser: 'USER node',
+    },
+  ])(
+    'should write Dockerfile and .dockerignore for $stack when running with --yes',
+    async ({ fixture, expectedBuilder, expectedUser }) => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'teiu-cmd-docker-'));
+      try {
+        fs.cpSync(path.join(fixturesDir, fixture), tempDir, { recursive: true });
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createDockerCommand();
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const cmd = createDockerCommand();
 
-    await cmd.parseAsync(['node', 'docker', '--yes', '--dir', tempDir]);
+        await cmd.parseAsync(['node', 'docker', '--yes', '--dir', tempDir]);
 
-    expect(fs.existsSync(path.join(tempDir, 'Dockerfile'))).toBe(true);
-    expect(fs.existsSync(path.join(tempDir, '.dockerignore'))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, 'Dockerfile'))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, '.dockerignore'))).toBe(true);
 
-    const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
-    expect(dockerfile).toContain('FROM eclipse-temurin:21-jdk-alpine AS builder');
-    expect(dockerfile).toContain('USER app');
+        const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
+        expect(dockerfile).toContain(expectedBuilder);
+        expect(dockerfile).toContain(expectedUser);
 
-    logSpy.mockRestore();
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('should write Dockerfile and .dockerignore for NestJS when running with --yes', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'teiu-cmd-docker-nest-'));
-    fs.cpSync(path.join(fixturesDir, 'nest-npm'), tempDir, { recursive: true });
-
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createDockerCommand();
-
-    await cmd.parseAsync(['node', 'docker', '--yes', '--dir', tempDir]);
-
-    expect(fs.existsSync(path.join(tempDir, 'Dockerfile'))).toBe(true);
-    expect(fs.existsSync(path.join(tempDir, '.dockerignore'))).toBe(true);
-
-    const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
-    expect(dockerfile).toContain('FROM node:20-alpine AS deps');
-    expect(dockerfile).toContain('USER node');
-
-    logSpy.mockRestore();
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
+        logSpy.mockRestore();
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    },
+  );
 });

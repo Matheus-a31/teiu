@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import YAML from 'yaml';
 import type { ProjectInfo } from '../../types/project.js';
 import {
@@ -7,6 +9,7 @@ import {
   getVolumeName,
   type ComposeServiceConfig,
 } from './services.js';
+import { generateEnvExample } from '../dotfiles.js';
 
 export interface GenerateComposeOptions {
   db?: DatabaseType;
@@ -158,3 +161,34 @@ export function generateCompose(
     addedServices,
   };
 }
+
+export interface ComposeAndEnvOutput {
+  composeResult: GenerateComposeResult;
+  envExampleContent: string;
+}
+
+export function generateComposeAndEnv(
+  info: ProjectInfo,
+  targetDir: string,
+  options: { db?: DatabaseType; cache?: CacheType; force?: boolean } = {},
+): ComposeAndEnvOutput {
+  const composePath = path.join(targetDir, 'docker-compose.yml');
+  const existingComposeContent =
+    fs.existsSync(composePath) && !options.force
+      ? fs.readFileSync(composePath, 'utf-8')
+      : undefined;
+
+  const composeResult = generateCompose(info, {
+    db: options.db,
+    cache: options.cache,
+    existingComposeContent,
+  });
+
+  const envExampleContent = generateEnvExample(info, {
+    db: options.db,
+    cache: options.cache,
+  });
+
+  return { composeResult, envExampleContent };
+}
+

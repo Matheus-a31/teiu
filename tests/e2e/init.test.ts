@@ -9,6 +9,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const fixturesDir = path.resolve(__dirname, '../fixtures');
 
+function checkAllArtifactsPresent(dir: string) {
+  const artifacts = [
+    'Dockerfile',
+    '.dockerignore',
+    'docker-compose.yml',
+    '.env.example',
+    '.github/workflows/ci.yml',
+  ];
+  for (const artifact of artifacts) {
+    expect(fs.existsSync(path.join(dir, artifact))).toBe(true);
+  }
+}
+
+function readArtifact(dir: string, file: string): string {
+  return fs.readFileSync(path.join(dir, file), 'utf-8');
+}
+
 describe('E2E: teiu init', () => {
   let tempDir: string;
 
@@ -23,41 +40,22 @@ describe('E2E: teiu init', () => {
   });
 
   it('should run end-to-end init on Spring Boot Maven project', async () => {
-    const fixtureDir = path.join(fixturesDir, 'spring-maven');
-    fs.cpSync(fixtureDir, tempDir, { recursive: true });
+    fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
 
     const cmd = createInitCommand();
     await cmd.parseAsync(['node', 'init', tempDir, '--yes', '--db', 'postgres']);
 
-    // Verifica todos os 5 arquivos gerados
-    const expectedFiles = [
-      'Dockerfile',
-      '.dockerignore',
-      'docker-compose.yml',
-      '.env.example',
-      '.github/workflows/ci.yml',
-    ];
+    checkAllArtifactsPresent(tempDir);
 
-    for (const file of expectedFiles) {
-      expect(fs.existsSync(path.join(tempDir, file))).toBe(true);
-    }
-
-    // Valida consistência entre os arquivos
-    const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
-    const compose = fs.readFileSync(path.join(tempDir, 'docker-compose.yml'), 'utf-8');
-    const ci = fs.readFileSync(path.join(tempDir, '.github/workflows/ci.yml'), 'utf-8');
-    const env = fs.readFileSync(path.join(tempDir, '.env.example'), 'utf-8');
-
-    expect(dockerfile).toContain('EXPOSE 8080');
-    expect(compose).toContain('${PORT:-8080}:8080');
-    expect(compose).toContain('POSTGRES_DB');
-    expect(env).toContain('POSTGRES_DB');
-    expect(ci).toContain('actions/setup-java@v4');
+    expect(readArtifact(tempDir, 'Dockerfile')).toContain('EXPOSE 8080');
+    expect(readArtifact(tempDir, 'docker-compose.yml')).toContain('${PORT:-8080}:8080');
+    expect(readArtifact(tempDir, 'docker-compose.yml')).toContain('POSTGRES_DB');
+    expect(readArtifact(tempDir, '.env.example')).toContain('POSTGRES_DB');
+    expect(readArtifact(tempDir, '.github/workflows/ci.yml')).toContain('actions/setup-java@v4');
   });
 
   it('should run end-to-end init on NestJS project with custom services', async () => {
-    const fixtureDir = path.join(fixturesDir, 'nest-npm');
-    fs.cpSync(fixtureDir, tempDir, { recursive: true });
+    fs.cpSync(path.join(fixturesDir, 'nest-npm'), tempDir, { recursive: true });
 
     const cmd = createInitCommand();
     await cmd.parseAsync([
@@ -73,28 +71,13 @@ describe('E2E: teiu init', () => {
       'ghcr',
     ]);
 
-    const expectedFiles = [
-      'Dockerfile',
-      '.dockerignore',
-      'docker-compose.yml',
-      '.env.example',
-      '.github/workflows/ci.yml',
-    ];
+    checkAllArtifactsPresent(tempDir);
 
-    for (const file of expectedFiles) {
-      expect(fs.existsSync(path.join(tempDir, file))).toBe(true);
-    }
-
-    const compose = fs.readFileSync(path.join(tempDir, 'docker-compose.yml'), 'utf-8');
-    expect(compose).toContain('postgres:');
-    expect(compose).toContain('redis:');
-
-    const env = fs.readFileSync(path.join(tempDir, '.env.example'), 'utf-8');
-    expect(env).toContain('POSTGRES_USER=');
-    expect(env).toContain('REDIS_PORT=6379');
-
-    const ci = fs.readFileSync(path.join(tempDir, '.github/workflows/ci.yml'), 'utf-8');
-    expect(ci).toContain('npm ci');
-    expect(ci).toContain('ghcr.io');
+    expect(readArtifact(tempDir, 'docker-compose.yml')).toContain('postgres:');
+    expect(readArtifact(tempDir, 'docker-compose.yml')).toContain('redis:');
+    expect(readArtifact(tempDir, '.env.example')).toContain('POSTGRES_USER=');
+    expect(readArtifact(tempDir, '.env.example')).toContain('REDIS_PORT=6379');
+    expect(readArtifact(tempDir, '.github/workflows/ci.yml')).toContain('npm ci');
+    expect(readArtifact(tempDir, '.github/workflows/ci.yml')).toContain('ghcr.io');
   });
 });

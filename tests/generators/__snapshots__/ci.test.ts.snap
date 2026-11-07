@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for Nest npm with GHCR 1`] = `
+exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for 'Nest npm with GHCR' 1`] = `
 "# ==============================================================================
 # 🦎 Pipeline de CI/CD gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: NestJS | GitHub Actions | Cache GHA | Multi-stage Docker Build
@@ -91,7 +91,7 @@ jobs:
 "
 `;
 
-exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for Nest pnpm with ECR 1`] = `
+exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for 'Nest pnpm with ECR' 1`] = `
 "# ==============================================================================
 # 🦎 Pipeline de CI/CD gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: NestJS | GitHub Actions | Cache GHA | Multi-stage Docker Build
@@ -189,7 +189,7 @@ jobs:
 "
 `;
 
-exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for Nest yarn 1`] = `
+exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for 'Nest yarn' 1`] = `
 "# ==============================================================================
 # 🦎 Pipeline de CI/CD gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: NestJS | GitHub Actions | Cache GHA | Multi-stage Docker Build
@@ -280,7 +280,7 @@ jobs:
 "
 `;
 
-exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for Spring Gradle with Docker Hub 1`] = `
+exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for 'Spring Gradle with Docker Hub' 1`] = `
 "# ==============================================================================
 # 🦎 Pipeline de CI/CD gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: Spring Boot | GitHub Actions | Cache GHA | Multi-stage Docker Build
@@ -366,7 +366,7 @@ jobs:
 "
 `;
 
-exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for Spring Maven with GHCR 1`] = `
+exports[`Generator: CI Workflow (GitHub Actions) > should generate GitHub Actions workflow for 'Spring Maven with GHCR' 1`] = `
 "# ==============================================================================
 # 🦎 Pipeline de CI/CD gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
 # Stack: Spring Boot | GitHub Actions | Cache GHA | Multi-stage Docker Build

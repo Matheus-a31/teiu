@@ -9,6 +9,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const fixturesDir = path.resolve(__dirname, '../fixtures');
 
+async function executeCiCommand(args: string[]): Promise<string> {
+  const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const cmd = createCiCommand();
+    await cmd.parseAsync(['node', 'ci', ...args]);
+    return logSpy.mock.calls.map((c) => c[0]).join('\n');
+  } finally {
+    logSpy.mockRestore();
+  }
+}
+
 describe('Command: ci', () => {
   let tempDir: string;
 
@@ -24,61 +35,35 @@ describe('Command: ci', () => {
 
   it('should support dry-run mode without creating files', async () => {
     const fixtureDir = path.join(fixturesDir, 'spring-maven');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const output = await executeCiCommand([fixtureDir, '--dry-run']);
 
-    const cmd = createCiCommand();
-    await cmd.parseAsync(['node', 'ci', fixtureDir, '--dry-run']);
-
-    expect(logSpy).toHaveBeenCalled();
-    const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
     expect(output).toContain('name: CI / CD');
     expect(output).toContain('actions/setup-java@v4');
-
-    logSpy.mockRestore();
   });
 
   it('should support JSON output in ci command', async () => {
     const fixtureDir = path.join(fixturesDir, 'nest-npm');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    const cmd = createCiCommand();
-    await cmd.parseAsync(['node', 'ci', fixtureDir, '--dry-run', '--json']);
-
-    expect(logSpy).toHaveBeenCalled();
-    const output = logSpy.mock.calls[0]?.[0];
-    const parsed = JSON.parse(output as string);
+    const output = await executeCiCommand([fixtureDir, '--dry-run', '--json']);
+    const parsed = JSON.parse(output);
 
     expect(parsed.dryRun).toBe(true);
     expect(parsed.targetPath).toBe('.github/workflows/ci.yml');
     expect(parsed.content).toContain('actions/setup-node@v4');
-
-    logSpy.mockRestore();
   });
 
   it('should notify when gitlab provider is chosen', async () => {
     const fixtureDir = path.join(fixturesDir, 'spring-maven');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    const cmd = createCiCommand();
-    await cmd.parseAsync(['node', 'ci', fixtureDir, '--provider', 'gitlab', '--json']);
-
-    expect(logSpy).toHaveBeenCalled();
-    const output = logSpy.mock.calls[0]?.[0];
-    const parsed = JSON.parse(output as string);
+    const output = await executeCiCommand([fixtureDir, '--provider', 'gitlab', '--json']);
+    const parsed = JSON.parse(output);
 
     expect(parsed.status).toBe('unsupported');
     expect(parsed.provider).toBe('gitlab');
-
-    logSpy.mockRestore();
   });
 
   it('should write .github/workflows/ci.yml file when running command', async () => {
-    // Copia fixture para pasta temporária
-    const fixtureDir = path.join(fixturesDir, 'spring-maven');
-    fs.cpSync(fixtureDir, tempDir, { recursive: true });
+    fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
 
-    const cmd = createCiCommand();
-    await cmd.parseAsync(['node', 'ci', tempDir, '--registry', 'ghcr', '--yes']);
+    await executeCiCommand([tempDir, '--registry', 'ghcr', '--yes']);
 
     const workflowPath = path.join(tempDir, '.github/workflows/ci.yml');
     expect(fs.existsSync(workflowPath)).toBe(true);
