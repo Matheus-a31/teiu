@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { detectProject } from '../detectors/index.js';
 import { generateSpringDocker } from '../generators/docker/spring.js';
+import { generateNestDocker } from '../generators/docker/nest.js';
 import { writeFileWithPolicy, type WriteFileResult } from '../core/file-writer.js';
 import { logger, colors } from '../core/logger.js';
 
@@ -41,8 +42,13 @@ export function createDockerCommand(): Command {
         return;
       }
 
-      if (info.stack !== 'spring') {
-        const msg = 'Geração de Dockerfile para esta stack será liberada nos próximos sprints.';
+      let generated;
+      if (info.stack === 'spring') {
+        generated = generateSpringDocker(info, { baseImage: options.baseImage });
+      } else if (info.stack === 'nest') {
+        generated = generateNestDocker(info, { baseImage: options.baseImage });
+      } else {
+        const msg = 'Geração de Dockerfile não suportada para esta stack.';
         if (options.json) {
           console.log(JSON.stringify({ error: msg }, null, 2));
         } else {
@@ -51,16 +57,15 @@ export function createDockerCommand(): Command {
         return;
       }
 
-      // Gera os arquivos na memória
-      const generated = generateSpringDocker(info, { baseImage: options.baseImage });
-
       // Se não for --yes nem --json nem --dry-run, pede confirmação
       if (!options.yes && !options.json && !options.dryRun) {
         p.intro(colors.primary('🦎 Teiú — Geração de Container Docker'));
-        p.note(
-          `Stack: Spring Boot ${info.spring?.bootVersion}\nJava: ${info.spring?.javaVersion}\nPorta: ${info.port}`,
-          'Parâmetros detectados',
-        );
+        const stackDetails =
+          info.stack === 'spring'
+            ? `Stack: Spring Boot ${info.spring?.bootVersion}\nJava: ${info.spring?.javaVersion}\nPorta: ${info.port}`
+            : `Stack: NestJS\nNode: ${info.nest?.nodeVersion}\nPackage Manager: ${info.nest?.packageManager}\nPorta: ${info.port}`;
+
+        p.note(stackDetails, 'Parâmetros detectados');
 
         const shouldProceed = await p.confirm({
           message: 'Deseja gerar o Dockerfile e .dockerignore agora?',
@@ -106,19 +111,7 @@ export function createDockerCommand(): Command {
         return;
       }
 
-      // Exibição amigável no terminal
-      console.log();
-      for (const res of results) {
-        if (res.status === 'created') {
-          logger.success(res.message);
-        } else if (res.status === 'updated') {
-          logger.success(res.message);
-        } else if (res.status === 'identical') {
-          logger.info(res.message);
-        } else {
-          logger.warn(res.message);
-        }
-      }
+      logger.printResults(results);
 
       if (!options.dryRun) {
         console.log();

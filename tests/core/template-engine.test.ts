@@ -25,6 +25,13 @@ describe('Core: Template Engine', () => {
     expect(JSON.parse(result)).toEqual({ stack: 'spring' });
   });
 
+  it('should support gh helper for GitHub Actions expressions', () => {
+    const tmpl = 'user: {{gh "github.actor"}} | event: {{gh "github.event_name != \'pull_request\'"}}';
+    expect(renderTemplate(tmpl, {})).toBe(
+      "user: ${{ github.actor }} | event: ${{ github.event_name != 'pull_request' }}",
+    );
+  });
+
   it('should render template files from disk', () => {
     const rendered = renderTemplateFile('dotfiles/dockerignore.hbs', {});
     expect(rendered).toContain('target/');

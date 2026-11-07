@@ -1,0 +1,72 @@
+# ==============================================================================
+# 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
+# Stack: NestJS | Multi-stage build | Non-root security | Otimizado para cache
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Instalação de Dependências
+# ------------------------------------------------------------------------------
+FROM {{builderImage}} AS deps
+WORKDIR /app
+
+{{#if (eq packageManager "pnpm")}}
+# Habilita suporte ao pnpm via Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
+{{else if (eq packageManager "yarn")}}
+# Cache de dependências via Yarn
+COPY package.json yarn.lock* ./
+RUN yarn install --frozen-lockfile
+{{else}}
+# Cache de dependências via npm
+COPY package.json package-lock.json* ./
+RUN npm ci
+{{/if}}
+
+# ------------------------------------------------------------------------------
+# Stage 2: Compilação da Aplicação e Limpeza de DevDependencies
+# ------------------------------------------------------------------------------
+FROM {{builderImage}} AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+{{#if (eq packageManager "pnpm")}}
+RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN pnpm run build
+RUN pnpm prune --prod
+{{else if (eq packageManager "yarn")}}
+RUN yarn build
+RUN yarn install --production --ignore-scripts --prefer-offline
+{{else}}
+RUN npm run build
+RUN npm prune --omit=dev
+{{/if}}
+
+# ------------------------------------------------------------------------------
+# Stage 3: Runtime de Produção Seguro e Enxuto
+# ------------------------------------------------------------------------------
+FROM {{runtimeImage}} AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copia arquivos necessários com permissões do usuário node (não-root)
+COPY --chown=node:node package.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/{{buildDir}} ./{{buildDir}}
+
+# Executa sob usuário não-privilegiado padrão do Node.js
+USER node
+
+# Expõe a porta de escuta da aplicação
+EXPOSE {{port}}
+
+# Verificação de saúde em runtime
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:{{port}}{{healthPath}} || exit 1
+
+# Ponto de entrada
+CMD ["node", "{{entryFile}}"]

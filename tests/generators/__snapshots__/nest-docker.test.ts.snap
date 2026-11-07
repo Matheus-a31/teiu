@@ -1,0 +1,171 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Generator: Nest Dockerfile & .dockerignore > should generate multi-stage Dockerfile for 'nest-npm' 1`] = `
+"# ==============================================================================
+# 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
+# Stack: NestJS | Multi-stage build | Non-root security | Otimizado para cache
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Instalação de Dependências
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Cache de dependências via npm
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# ------------------------------------------------------------------------------
+# Stage 2: Compilação da Aplicação e Limpeza de DevDependencies
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN npm run build
+RUN npm prune --omit=dev
+
+# ------------------------------------------------------------------------------
+# Stage 3: Runtime de Produção Seguro e Enxuto
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copia arquivos necessários com permissões do usuário node (não-root)
+COPY --chown=node:node package.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
+
+# Executa sob usuário não-privilegiado padrão do Node.js
+USER node
+
+# Expõe a porta de escuta da aplicação
+EXPOSE 3000
+
+# Verificação de saúde em runtime
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \\
+  CMD wget -qO- http://localhost:3000/health || exit 1
+
+# Ponto de entrada
+CMD ["node", "dist/main.js"]
+"
+`;
+
+exports[`Generator: Nest Dockerfile & .dockerignore > should generate multi-stage Dockerfile for 'nest-pnpm' 1`] = `
+"# ==============================================================================
+# 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
+# Stack: NestJS | Multi-stage build | Non-root security | Otimizado para cache
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Instalação de Dependências
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Habilita suporte ao pnpm via Corepack
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
+
+# ------------------------------------------------------------------------------
+# Stage 2: Compilação da Aplicação e Limpeza de DevDependencies
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN pnpm run build
+RUN pnpm prune --prod
+
+# ------------------------------------------------------------------------------
+# Stage 3: Runtime de Produção Seguro e Enxuto
+# ------------------------------------------------------------------------------
+FROM node:20-alpine AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copia arquivos necessários com permissões do usuário node (não-root)
+COPY --chown=node:node package.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
+
+# Executa sob usuário não-privilegiado padrão do Node.js
+USER node
+
+# Expõe a porta de escuta da aplicação
+EXPOSE 4000
+
+# Verificação de saúde em runtime
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \\
+  CMD wget -qO- http://localhost:4000/health || exit 1
+
+# Ponto de entrada
+CMD ["node", "dist/main.js"]
+"
+`;
+
+exports[`Generator: Nest Dockerfile & .dockerignore > should generate multi-stage Dockerfile for 'nest-yarn' 1`] = `
+"# ==============================================================================
+# 🦎 Dockerfile gerado pelo Teiú — Toolkit de Entrega, Infraestrutura e Unificação
+# Stack: NestJS | Multi-stage build | Non-root security | Otimizado para cache
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Instalação de Dependências
+# ------------------------------------------------------------------------------
+FROM node:18-alpine AS deps
+WORKDIR /app
+
+# Cache de dependências via Yarn
+COPY package.json yarn.lock* ./
+RUN yarn install --frozen-lockfile
+
+# ------------------------------------------------------------------------------
+# Stage 2: Compilação da Aplicação e Limpeza de DevDependencies
+# ------------------------------------------------------------------------------
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN yarn build
+RUN yarn install --production --ignore-scripts --prefer-offline
+
+# ------------------------------------------------------------------------------
+# Stage 3: Runtime de Produção Seguro e Enxuto
+# ------------------------------------------------------------------------------
+FROM node:18-alpine AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copia arquivos necessários com permissões do usuário node (não-root)
+COPY --chown=node:node package.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/dist ./dist
+
+# Executa sob usuário não-privilegiado padrão do Node.js
+USER node
+
+# Expõe a porta de escuta da aplicação
+EXPOSE 3001
+
+# Verificação de saúde em runtime
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \\
+  CMD wget -qO- http://localhost:3001/health || exit 1
+
+# Ponto de entrada
+CMD ["node", "dist/main.js"]
+"
+`;

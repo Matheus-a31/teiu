@@ -1,70 +1,67 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import { describe, it, expect, vi } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { describe, it, expect } from 'vitest';
 import { createDockerCommand } from '../../src/commands/docker.js';
+import { runCliCommand, withTempDir, readTextFile } from '../test-utils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const fixturesDir = path.resolve(__dirname, '../fixtures');
 
 describe('Command: docker', () => {
-  const fixturesDir = path.resolve(__dirname, '../fixtures');
-
   it('should support dry-run mode without creating files', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createDockerCommand();
-
-    await cmd.parseAsync([
-      'node',
-      'docker',
+    const output = await runCliCommand(createDockerCommand, 'docker', [
       '--dry-run',
       '--dir',
       path.join(fixturesDir, 'spring-maven'),
     ]);
 
-    expect(logSpy).toHaveBeenCalled();
-    logSpy.mockRestore();
+    expect(output).toBeDefined();
   });
 
   it('should support JSON output in docker command', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createDockerCommand();
-
-    await cmd.parseAsync([
-      'node',
-      'docker',
+    const output = await runCliCommand(createDockerCommand, 'docker', [
       '--dry-run',
       '--json',
       '--dir',
       path.join(fixturesDir, 'spring-maven'),
     ]);
-
-    expect(logSpy).toHaveBeenCalled();
-    const output = logSpy.mock.calls[0]?.[0];
-    const parsed = JSON.parse(output as string);
+    const parsed = JSON.parse(output);
 
     expect(parsed.success).toBe(true);
     expect(parsed.dryRun).toBe(true);
     expect(parsed.results.length).toBe(2);
-
-    logSpy.mockRestore();
   });
 
-  it('should write Dockerfile and .dockerignore when running with --yes', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'teiu-cmd-docker-'));
-    // Copia fixture spring-maven para tempDir
-    fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
+  it.each([
+    {
+      stack: 'Spring',
+      fixture: 'spring-maven',
+      expectedBuilder: 'FROM eclipse-temurin:21-jdk-alpine AS builder',
+      expectedUser: 'USER app',
+    },
+    {
+      stack: 'NestJS',
+      fixture: 'nest-npm',
+      expectedBuilder: 'FROM node:20-alpine AS deps',
+      expectedUser: 'USER node',
+    },
+  ])(
+    'should write Dockerfile and .dockerignore for $stack when running with --yes',
+    async ({ fixture, expectedBuilder, expectedUser }) => {
+      await withTempDir('teiu-cmd-docker-', async (tempDir) => {
+        fs.cpSync(path.join(fixturesDir, fixture), tempDir, { recursive: true });
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createDockerCommand();
+        await runCliCommand(createDockerCommand, 'docker', ['--yes', '--dir', tempDir]);
 
-    await cmd.parseAsync(['node', 'docker', '--yes', '--dir', tempDir]);
+        expect(fs.existsSync(path.join(tempDir, 'Dockerfile'))).toBe(true);
+        expect(fs.existsSync(path.join(tempDir, '.dockerignore'))).toBe(true);
 
-    expect(fs.existsSync(path.join(tempDir, 'Dockerfile'))).toBe(true);
-    expect(fs.existsSync(path.join(tempDir, '.dockerignore'))).toBe(true);
-
-    const dockerfile = fs.readFileSync(path.join(tempDir, 'Dockerfile'), 'utf-8');
-    expect(dockerfile).toContain('FROM eclipse-temurin:21-jdk-alpine AS builder');
-    expect(dockerfile).toContain('USER app');
-
-    logSpy.mockRestore();
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  });
+        const dockerfile = readTextFile(tempDir, 'Dockerfile');
+        expect(dockerfile).toContain(expectedBuilder);
+        expect(dockerfile).toContain(expectedUser);
+      });
+    },
+  );
 });
