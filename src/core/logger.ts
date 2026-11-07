@@ -1,5 +1,7 @@
+import path from 'node:path';
 import chalk from 'chalk';
 import type { ProjectInfo } from '../types/project.js';
+import type { WriteFileResult } from './file-writer.js';
 
 export interface DoctorCheck {
   name: string;
@@ -38,6 +40,22 @@ export const logger = {
 
   error(message: string): void {
     console.error(`${chalk.red('✗')} ${message}`);
+  },
+
+  printResults(results: WriteFileResult[], targetDir?: string): void {
+    console.log();
+    for (const res of results) {
+      if (res.status === 'created' || res.status === 'updated') {
+        this.success(res.message);
+        if (res.backupPath && targetDir) {
+          this.info(`Backup salvo em: ${path.relative(targetDir, res.backupPath)}`);
+        }
+      } else if (res.status === 'identical') {
+        this.info(res.message);
+      } else {
+        this.warn(res.message);
+      }
+    }
   },
 
   habitat(info: ProjectInfo): void {

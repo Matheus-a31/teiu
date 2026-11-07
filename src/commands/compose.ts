@@ -5,6 +5,7 @@ import * as p from '@clack/prompts';
 import { detectProject } from '../detectors/index.js';
 import { generateComposeAndEnv } from '../generators/compose/base.js';
 import type { DatabaseType, CacheType } from '../generators/compose/services.js';
+import { promptDatabase, promptCache } from '../core/prompt.js';
 import { writeFileWithPolicy, type WriteFileResult } from '../core/file-writer.js';
 import { logger, colors } from '../core/logger.js';
 
@@ -52,38 +53,15 @@ export function createComposeCommand(): Command {
         p.intro(colors.primary('🦎 Teiú — Configuração de Docker Compose'));
 
         if (!options.db) {
-          const dbChoice = await p.select({
-            message: 'Precisa de banco de dados no compose?',
-            options: [
-              { value: 'postgres', label: 'PostgreSQL (recomendado)', hint: 'postgres:16-alpine' },
-              { value: 'mysql', label: 'MySQL', hint: 'mysql:8.0' },
-              { value: 'none', label: 'Nenhum' },
-            ],
-            initialValue: 'postgres',
-          });
-
-          if (p.isCancel(dbChoice)) {
-            p.cancel('Operação cancelada pelo usuário.');
-            return;
-          }
-          selectedDb = dbChoice as DatabaseType;
+          const dbChoice = await promptDatabase('postgres');
+          if (!dbChoice) return;
+          selectedDb = dbChoice;
         }
 
         if (!options.cache) {
-          const cacheChoice = await p.select({
-            message: 'Precisa de cache ou mensageria leve?',
-            options: [
-              { value: 'redis', label: 'Redis', hint: 'redis:7-alpine' },
-              { value: 'none', label: 'Nenhum' },
-            ],
-            initialValue: 'none',
-          });
-
-          if (p.isCancel(cacheChoice)) {
-            p.cancel('Operação cancelada pelo usuário.');
-            return;
-          }
-          selectedCache = cacheChoice as CacheType;
+          const cacheChoice = await promptCache('none');
+          if (!cacheChoice) return;
+          selectedCache = cacheChoice;
         }
       }
 
@@ -129,8 +107,6 @@ export function createComposeCommand(): Command {
         return;
       }
 
-      // Exibição amigável no terminal
-      console.log();
       if (composeResult.isMerged) {
         if (composeResult.addedServices.length > 0) {
           logger.success(
@@ -141,17 +117,7 @@ export function createComposeCommand(): Command {
         }
       }
 
-      for (const res of results) {
-        if (res.status === 'created') {
-          logger.success(res.message);
-        } else if (res.status === 'updated') {
-          logger.success(res.message);
-        } else if (res.status === 'identical') {
-          logger.info(res.message);
-        } else {
-          logger.warn(res.message);
-        }
-      }
+      logger.printResults(results);
 
       if (!options.dryRun) {
         console.log();

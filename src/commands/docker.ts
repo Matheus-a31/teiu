@@ -111,19 +111,7 @@ export function createDockerCommand(): Command {
         return;
       }
 
-      // Exibição amigável no terminal
-      console.log();
-      for (const res of results) {
-        if (res.status === 'created') {
-          logger.success(res.message);
-        } else if (res.status === 'updated') {
-          logger.success(res.message);
-        } else if (res.status === 'identical') {
-          logger.info(res.message);
-        } else {
-          logger.warn(res.message);
-        }
-      }
+      logger.printResults(results);
 
       if (!options.dryRun) {
         console.log();

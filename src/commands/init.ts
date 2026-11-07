@@ -9,6 +9,12 @@ import { generateNestDocker } from '../generators/docker/nest.js';
 import { generateComposeAndEnv } from '../generators/compose/base.js';
 import { generateGithubWorkflow } from '../generators/ci/github.js';
 import type { DatabaseType, CacheType } from '../generators/compose/services.js';
+import {
+  promptDatabase,
+  promptCache,
+  promptRegistry,
+  promptConfirm,
+} from '../core/prompt.js';
 import { writeFileWithPolicy, type WriteFileResult } from '../core/file-writer.js';
 import { logger, colors } from '../core/logger.js';
 
@@ -121,59 +127,23 @@ export function createInitCommand(): Command {
 
         // 2. Database
         if (!options.db) {
-          const res = await p.select({
-            message: 'Precisa de banco de dados no docker-compose?',
-            options: [
-              { value: 'postgres', label: 'PostgreSQL', hint: 'Recomendado' },
-              { value: 'mysql', label: 'MySQL' },
-              { value: 'none', label: 'Nenhum' },
-            ],
-            initialValue: info.stack === 'spring' ? 'postgres' : 'none',
-          });
-          if (p.isCancel(res)) {
-            p.cancel('Operação cancelada.');
-            return;
-          }
-          selectedDb = res as DatabaseType;
+          const res = await promptDatabase(info.stack === 'spring' ? 'postgres' : 'none');
+          if (!res) return;
+          selectedDb = res;
         }
 
         // 3. Cache
         if (!options.cache) {
-          const res = await p.select({
-            message: 'Precisa de cache distribuído no docker-compose?',
-            options: [
-              { value: 'none', label: 'Nenhum', hint: 'Padrão' },
-              { value: 'redis', label: 'Redis' },
-            ],
-            initialValue: 'none',
-          });
-          if (p.isCancel(res)) {
-            p.cancel('Operação cancelada.');
-            return;
-          }
-          selectedCache = res as CacheType;
+          const res = await promptCache('none');
+          if (!res) return;
+          selectedCache = res;
         }
 
         // 4. Registry (apenas se GitHub Actions for selecionado)
         if (selectedProvider === 'github' && !options.registry) {
-          const res = await p.select({
-            message: 'Qual container registry para push da imagem no CI?',
-            options: [
-              {
-                value: 'ghcr',
-                label: 'GitHub Container Registry (GHCR)',
-                hint: 'Recomendado (zero-config)',
-              },
-              { value: 'dockerhub', label: 'Docker Hub' },
-              { value: 'ecr', label: 'Amazon ECR' },
-            ],
-            initialValue: 'ghcr',
-          });
-          if (p.isCancel(res)) {
-            p.cancel('Operação cancelada.');
-            return;
-          }
-          selectedRegistry = res as 'ghcr' | 'dockerhub' | 'ecr';
+          const res = await promptRegistry('ghcr');
+          if (!res) return;
+          selectedRegistry = res;
         }
 
         // Lista de arquivos a serem gerados
@@ -192,15 +162,8 @@ export function createInitCommand(): Command {
           'Arquivos que serão gerados:',
         );
 
-        const confirmed = await p.confirm({
-          message: 'Confirmar a geração dos arquivos de infraestrutura?',
-          initialValue: true,
-        });
-
-        if (p.isCancel(confirmed) || !confirmed) {
-          p.cancel('Operação cancelada.');
-          return;
-        }
+        const confirmed = await promptConfirm('Confirmar a geração dos arquivos de infraestrutura?');
+        if (!confirmed) return;
       }
 
       // Geração dos arquivos
@@ -292,20 +255,7 @@ export function createInitCommand(): Command {
         return;
       }
 
-      // Visual feedback
-      console.log();
-      for (const res of results) {
-        if (res.status === 'created' || res.status === 'updated') {
-          logger.success(res.message);
-          if (res.backupPath) {
-            logger.info(`Backup salvo em: ${path.relative(targetDir, res.backupPath)}`);
-          }
-        } else if (res.status === 'identical') {
-          logger.info(res.message);
-        } else {
-          logger.warn(res.message);
-        }
-      }
+      logger.printResults(results, targetDir);
 
       if (!options.dryRun) {
         console.log();

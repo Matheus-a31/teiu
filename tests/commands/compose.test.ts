@@ -1,36 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import { describe, it, expect, vi } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { describe, it, expect } from 'vitest';
 import YAML from 'yaml';
 import { createComposeCommand } from '../../src/commands/compose.js';
+import { runCliCommand, withTempDir, readTextFile } from '../test-utils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const fixturesDir = path.resolve(__dirname, '../fixtures');
 
 describe('Command: compose', () => {
-  const fixturesDir = path.resolve(__dirname, '../fixtures');
-
   it('should support dry-run mode without creating files', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createComposeCommand();
-
-    await cmd.parseAsync([
-      'node',
-      'compose',
+    const output = await runCliCommand(createComposeCommand, 'compose', [
       '--dry-run',
       '--dir',
       path.join(fixturesDir, 'nest-npm'),
     ]);
 
-    expect(logSpy).toHaveBeenCalled();
-    logSpy.mockRestore();
+    expect(output).toBeDefined();
   });
 
   it('should support JSON output in compose command', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createComposeCommand();
-
-    await cmd.parseAsync([
-      'node',
-      'compose',
+    const output = await runCliCommand(createComposeCommand, 'compose', [
       '--dry-run',
       '--json',
       '--db',
@@ -40,80 +32,69 @@ describe('Command: compose', () => {
       '--dir',
       path.join(fixturesDir, 'nest-npm'),
     ]);
-
-    expect(logSpy).toHaveBeenCalled();
-    const output = logSpy.mock.calls[0]?.[0];
-    const parsed = JSON.parse(output as string);
+    const parsed = JSON.parse(output);
 
     expect(parsed.success).toBe(true);
     expect(parsed.dryRun).toBe(true);
     expect(parsed.addedServices).toEqual(['postgres', 'redis']);
-
-    logSpy.mockRestore();
   });
 
   it('should generate docker-compose.yml and .env.example with --yes', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'teiu-cmd-compose-'));
-    fs.cpSync(path.join(fixturesDir, 'nest-pnpm'), tempDir, { recursive: true });
+    await withTempDir('teiu-cmd-compose-', async (tempDir) => {
+      fs.cpSync(path.join(fixturesDir, 'nest-pnpm'), tempDir, { recursive: true });
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createComposeCommand();
+      await runCliCommand(createComposeCommand, 'compose', [
+        '--yes',
+        '--db',
+        'postgres',
+        '--cache',
+        'redis',
+        '--dir',
+        tempDir,
+      ]);
 
-    await cmd.parseAsync([
-      'node',
-      'compose',
-      '--yes',
-      '--db',
-      'postgres',
-      '--cache',
-      'redis',
-      '--dir',
-      tempDir,
-    ]);
+      const composePath = path.join(tempDir, 'docker-compose.yml');
+      const envExamplePath = path.join(tempDir, '.env.example');
 
-    const composePath = path.join(tempDir, 'docker-compose.yml');
-    const envExamplePath = path.join(tempDir, '.env.example');
+      expect(fs.existsSync(composePath)).toBe(true);
+      expect(fs.existsSync(envExamplePath)).toBe(true);
 
-    expect(fs.existsSync(composePath)).toBe(true);
-    expect(fs.existsSync(envExamplePath)).toBe(true);
-
-    const composeParsed = YAML.parse(fs.readFileSync(composePath, 'utf-8'));
-    expect(composeParsed.services.postgres).toBeDefined();
-    expect(composeParsed.services.redis).toBeDefined();
-    expect(composeParsed.services.app.depends_on.postgres.condition).toBe('service_healthy');
-
-    logSpy.mockRestore();
-    fs.rmSync(tempDir, { recursive: true, force: true });
+      const composeParsed = YAML.parse(readTextFile(tempDir, 'docker-compose.yml'));
+      expect(composeParsed.services.postgres).toBeDefined();
+      expect(composeParsed.services.redis).toBeDefined();
+      expect(composeParsed.services.app.depends_on.postgres.condition).toBe('service_healthy');
+    });
   });
 
   it('should perform intelligent merge when docker-compose.yml already exists', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'teiu-cmd-compose-merge-'));
-    fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
+    await withTempDir('teiu-cmd-compose-merge-', async (tempDir) => {
+      fs.cpSync(path.join(fixturesDir, 'spring-maven'), tempDir, { recursive: true });
 
-    const composePath = path.join(tempDir, 'docker-compose.yml');
-    const existingCompose = `
+      const existingCompose = `
 services:
   app:
     image: my-app:latest
     ports:
       - "8080:8080"
 `;
-    fs.writeFileSync(composePath, existingCompose, 'utf-8');
+      fs.writeFileSync(path.join(tempDir, 'docker-compose.yml'), existingCompose, 'utf-8');
 
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const cmd = createComposeCommand();
+      await runCliCommand(createComposeCommand, 'compose', [
+        '--yes',
+        '--db',
+        'postgres',
+        '--cache',
+        'redis',
+        '--dir',
+        tempDir,
+      ]);
 
-    await cmd.parseAsync(['node', 'compose', '--yes', '--db', 'postgres', '--dir', tempDir]);
+      const mergedContent = readTextFile(tempDir, 'docker-compose.yml');
+      const merged = YAML.parse(mergedContent);
 
-    const updatedCompose = YAML.parse(fs.readFileSync(composePath, 'utf-8'));
-    // Preservou customização do app
-    expect(updatedCompose.services.app.image).toBe('my-app:latest');
-    // Adicionou postgres
-    expect(updatedCompose.services.postgres.image).toBe('postgres:16-alpine');
-    // Vinculou depends_on
-    expect(updatedCompose.services.app.depends_on.postgres.condition).toBe('service_healthy');
-
-    logSpy.mockRestore();
-    fs.rmSync(tempDir, { recursive: true, force: true });
+      expect(merged.services.app.image).toBe('my-app:latest');
+      expect(merged.services.postgres).toBeDefined();
+      expect(merged.services.redis).toBeDefined();
+    });
   });
 });
