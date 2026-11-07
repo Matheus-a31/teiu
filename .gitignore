@@ -1,6 +1,7 @@
 # Documentação e assets locais
 project/
 /project/
+.agents
 
 # Dependências
 node_modules/
