@@ -7,6 +7,7 @@ import { createDoctorCommand } from './commands/doctor.js';
 import { createDockerCommand } from './commands/docker.js';
 import { createComposeCommand } from './commands/compose.js';
 import { createCiCommand } from './commands/ci.js';
+import { createAuditCommand } from './commands/audit.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -23,6 +24,7 @@ export function createCli(): Command {
   program.addCommand(createDockerCommand());
   program.addCommand(createComposeCommand());
   program.addCommand(createCiCommand());
+  program.addCommand(createAuditCommand());
 
   return program;
 }

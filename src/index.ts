@@ -16,4 +16,6 @@ export { createDoctorCommand, runDiagnostics } from './commands/doctor.js';
 export { createDockerCommand } from './commands/docker.js';
 export { createComposeCommand } from './commands/compose.js';
 export { createCiCommand } from './commands/ci.js';
+export { createAuditCommand } from './commands/audit.js';
+export * from './audit/index.js';
 export { createCli, program, runCli } from './cli.js';
