@@ -2,6 +2,7 @@ import path from 'node:path';
 import chalk from 'chalk';
 import type { ProjectInfo } from '../types/project.js';
 import type { WriteFileResult } from './file-writer.js';
+import type { AuditReport, AuditCategoryReport } from '../types/audit.js';
 
 export interface DoctorCheck {
   name: string;
@@ -56,6 +57,59 @@ export const logger = {
         this.warn(res.message);
       }
     }
+  },
+
+  audit(report: AuditReport): void {
+    console.log();
+    console.log(`${chalk.bold(colors.primary('🦎 Auditando infraestrutura...'))}`);
+    console.log();
+
+    const printCategory = (title: string, categoryReport?: AuditCategoryReport) => {
+      console.log(chalk.bold(title));
+      if (!categoryReport || !categoryReport.exists) {
+        console.log(`  ${chalk.red('✗')} Arquivo não encontrado`);
+        return;
+      }
+
+      const failedRules = categoryReport.rules.filter((r) => !r.passed);
+      if (failedRules.length === 0) {
+        console.log(`  ${chalk.green('✓')} OK`);
+        return;
+      }
+
+      for (const rule of categoryReport.rules) {
+        if (!rule.passed) {
+          const icon = rule.severity === 'critical' ? chalk.red('✗') : chalk.yellow('⚠');
+          console.log(`  ${icon} ${rule.message}`);
+        }
+      }
+    };
+
+    if (report.dockerfile) {
+      printCategory('Dockerfile', report.dockerfile);
+      console.log();
+    }
+
+    if (report.ci) {
+      printCategory('Pipeline CI / CD', report.ci);
+      console.log();
+    }
+
+    if (report.suggestions.length > 0) {
+      console.log(chalk.bold('Sugestões:'));
+      for (const sug of report.suggestions) {
+        console.log(`  • ${sug}`);
+      }
+      console.log();
+    }
+
+    const scoreColor =
+      report.score >= 9 ? chalk.green : report.score >= 7 ? chalk.cyan : report.score >= 4 ? chalk.yellow : chalk.red;
+
+    console.log(
+      `${chalk.bold('Score:')} ${scoreColor(`${report.score}/10`)} — ${report.statusMessage}`,
+    );
+    console.log();
   },
 
   habitat(info: ProjectInfo): void {
