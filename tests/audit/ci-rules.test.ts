@@ -47,4 +47,55 @@ jobs:
     const failed = results.filter((r) => !r.passed);
     expect(failed.length).toBe(0);
   });
+
+  it.each([
+    ['npm test', 'run: npm test'],
+    ['yarn test', 'run: yarn test'],
+    ['pnpm run test', 'run: pnpm run test'],
+    ['mvn verify', 'run: mvn clean verify'],
+    ['./mvnw test', 'run: ./mvnw -B test'],
+    ['gradle check', 'run: gradle check'],
+    ['./gradlew test', 'run: ./gradlew test'],
+  ])('should recognize test runner command: %s', (_, runCommand) => {
+    const content = `
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+      - ${runCommand}
+`;
+    const results = auditCiWorkflow({
+      content,
+      workflowPath: '.github/workflows/ci.yml',
+    });
+
+    const testRule = results.find((r) => r.id === 'CI_TESTS');
+    expect(testRule?.passed).toBe(true);
+  });
+
+  it('should not recognize commented out test commands', () => {
+    const content = `
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # run: ./mvnw test
+      # run: npm test
+      - run: echo "skipped tests"
+`;
+    const results = auditCiWorkflow({
+      content,
+      workflowPath: '.github/workflows/ci.yml',
+    });
+
+    const testRule = results.find((r) => r.id === 'CI_TESTS');
+    expect(testRule?.passed).toBe(false);
+  });
 });

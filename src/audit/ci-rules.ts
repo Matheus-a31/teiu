@@ -5,6 +5,21 @@ export interface CiAuditContext {
   workflowPath: string;
 }
 
+function hasAutomatedTests(content: string): boolean {
+  const lines = content.split('\n');
+  return lines.some((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#')) {
+      return false;
+    }
+    return (
+      /(npm|yarn|pnpm)\s+(run\s+)?test\b/i.test(trimmed) ||
+      (/\bmvnw?\b/i.test(trimmed) && /\b(verify|test)\b/i.test(trimmed)) ||
+      (/\bgradlew?\b/i.test(trimmed) && /\b(check|test)\b/i.test(trimmed))
+    );
+  });
+}
+
 export function auditCiWorkflow(context: CiAuditContext): AuditRuleResult[] {
   const { content } = context;
   const rules: AuditRuleResult[] = [];
@@ -30,12 +45,7 @@ export function auditCiWorkflow(context: CiAuditContext): AuditRuleResult[] {
   });
 
   // 2. Execução de testes automatizados
-  const hasTests =
-    /(npm|yarn|pnpm)\s+(run\s+)?test/i.test(content) ||
-    /(\.\/)?mvnw\s+.*(verify|test)/i.test(content) ||
-    /mvn\s+.*(verify|test)/i.test(content) ||
-    /(\.\/)?gradlew\s+.*(check|test)/i.test(content) ||
-    /gradle\s+.*(check|test)/i.test(content);
+  const hasTests = hasAutomatedTests(content);
 
   rules.push({
     id: 'CI_TESTS',
